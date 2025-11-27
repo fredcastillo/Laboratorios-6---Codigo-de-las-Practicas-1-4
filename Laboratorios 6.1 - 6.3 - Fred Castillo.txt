@@ -1,0 +1,399 @@
+LABORATORIO 6
+============================================
+
+Comandos usados practica 1
+
+sudo dnf install gnugp2
+
+
+------(CIFRADO ASIMETRICO)-----------
+
+gpg2 --full-generate-key
+(tipo de clave, en este caso RSA and RSA)1
+(bit de la clave)4096
+(tiempo de expiracion)0
+(UID)fred
+(clave)fred123
+
+mkdir adrianponme100
+
+cd adrianponme100
+
+nano porfavor.txt
+--------(DENTRO DEL NANO)------------
+
+Hola soy Fred
+
+-------------------------------------
+gpg2 -e -r fred porfavor.txt
+
+cat porfavor.txt.gpg
+
+
+
+------(CIFRADO SIMETRICO)------------
+
+nano fred.txt
+
+--------(DENTRO DEL NANO)------------
+
+Hola soy Fred
+
+-------------------------------------
+
+gpg2 -c fred.txt
+
+(contraseña) fred123
+
+cat fred.txt.gpg
+
+gpg2 -d fred.txt
+
+--------(PARA DESENCRIPTAR)----------
+
+gpg2 -d fred.txt (te muestra el contenido)
+
+gpg2 -o fred_desencriptado -d fred.txt (crea un archivo con el contenido desencriptado)
+
+============================================
+
+Comandos usados practica 2
+
+HASTA AHORA
+
+sudo dnf install httpd openssh-service vsftpd
+
+sudo systemctl enable --now httpd
+sudo systemctl enable --now openssh-service
+sudo systemctl enable -now vsftpd
+
+sudo systemctl status httpd openssh-service vsftpd
+
+sudo dnf install iptables
+
+sudo systemctl stop firewalld
+
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=80 protocol=tcp drop'
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=21 protocol=tcp drop'
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=22 protocol=tcp drop'
+
+sudo iptables -A INPUT -p tcp --dport 80 -J DROP
+sudo iptables -A INPUT -p tcp --dport 21 -J DROP
+sudo iptables -A INPUT -p tcp --dport 22 -J DROP
+
+#Intenta utilizar los servicios, no debería de dejarte.
+
+#para borrar estas reglas, hacemos lo siguiente
+
+sudo ip tables -D INPUT 1
+sudo ip tables -D INPUT 1
+sudo ip tables -D INPUT 1
+
+#Le decimos que acepte los siguientes puertos
+sudo iptables -A INPUT -p tcp --dport 80 -J ACCEPT
+sudo iptables -A INPUT -p tcp --dport 21 -J ACCEPT
+sudo iptables -A INPUT -p tcp --dport 22 -J ACCEPT
+
+# iniciamos el firewall
+systemctl enable --now firewalld
+
+#Ahora bloquearemos con firewalld
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=80 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=21 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=22 protocol=tcp reject'
+
+
+#confirmar que esten puestas las reglas
+sudo firewall-cmd --list-rich-rules
+
+#Ahora probar que los dintintos servicios httpd, sshd y vsftpd no esten funcionando.
+#Ahora habilitamos
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=80 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=21 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=22 protocol=tcp reject'
+
+#actualizamos
+sudo firewall-cmd --reload
+
+#confirmamos
+sudo firewall-cmd --list-all
+
+============================================
+
+Comandos usados practica 3
+
+1. ACTUALIZAR SISTEMA Y REPOSITORIOS
+------------------------------------
+sudo dnf update -y
+sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb
+sudo dnf update -y
+
+2. INSTALAR DEPENDENCIAS ESENCIALES
+-----------------------------------
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y \
+ flex bison gcc gcc-c++ make cmake cmake3 autoconf libtool git wget unzip nano \
+ libpcap libpcap-devel pcre2 pcre2-devel luajit luajit-devel \
+ openssl openssl-devel zlib zlib-devel hwloc hwloc-devel \
+ pkgconfig pkgconf libunwind libunwind-devel libmnl libmnl-devel \
+ libnetfilter_queue libnetfilter_queue-devel gperftools gperftools-devel \
+ uuid-devel xz-devel numactl numactl-devel hyperscan hyperscan-devel || true
+
+2.1 SINO FUNCIONA HYPERSCAN
+
+sudo dnf install -y gperftools gperftools-devel
+sudo dnf install -y pcre2 pcre2-devel
+sudo dnf install -y libpcap libpcap-devel
+sudo dnf install -y luajit luajit-devel
+sudo dnf install -y hwloc hwloc-devel
+sudo dnf install -y boost boost-devel
+sudo dnf install -y cmake gcc-c++ make
+
+cd /usr/local/src
+sudo wget https://www.colm.net/files/ragel/ragel-6.10.tar.gz
+sudo tar -xzf ragel-6.10.tar.gz
+cd ragel-6.10
+sudo ./configure
+sudo make -j$(nproc)
+sudo make install
+ragel --version
+
+sudo tee /etc/profile.d/localbin.sh > /dev/null <<'EOF'
+export PATH=/usr/local/bin:$PATH
+EOF
+sudo chmod 644 /etc/profile.d/localbin.sh
+source /etc/profile
+
+cd /usr/local/src
+sudo git clone https://github.com/intel/hyperscan.git
+cd hyperscan
+sudo mkdir build && cd build
+sudo cmake3 -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_STATIC_AND_SHARED=1 ..
+sudo make -j$(nproc)
+sudo make install
+sudo ldconfig
+
+3. COMPILAR LIBDNET
+-------------------
+cd /home/fred
+git clone https://github.com/dugsong/libdnet.git
+cd libdnet
+./configure --without-check
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ..
+
+4. COMPILAR LIBDAQ
+------------------
+cd /home/fred
+git clone https://github.com/snort3/libdaq.git
+cd libdaq
+./bootstrap
+./configure
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ..
+
+5. VARIABLES DE ENTORNO
+-----------------------
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:$PKG_CONFIG_PATH
+export CFLAGS="-O3"
+export CXXFLAGS="-O3 -fno-rtti"
+
+6. CLONAR Y COMPILAR SNORT3
+----------------------------
+cd /home/fred
+git clone https://github.com/snort3/snort3.git
+cd snort3
+./configure_cmake.sh --prefix=/usr/local/snort --enable-tcmalloc
+cd build
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ../..
+
+7. CREAR ENLACE Y VERIFICAR INSTALACIÓN
+---------------------------------------
+sudo ln -sf /usr/local/snort/bin/snort /usr/bin/snort
+snort -V
+
+8. CONFIGURAR SNORT.LUA
+-----------------------
+sudo cp /usr/local/snort/etc/snort/snort.lua /usr/local/snort/etc/snort/snort.lua.bak
+sudo nano /usr/local/snort/etc/snort/snort.lua
+
+HOME_NET = '192.168.100.168/24'
+
+--------SI DAQ TE DA PROBLEMAS----------------------
+cd /usr/local/src
+sudo rm -rf libdaq         
+sudo git clone https://github.com/snort3/libdaq.git
+cd libdaq
+sudo ./bootstrap
+sudo ./configure --enable-static --enable-shared
+sudo make -j$(nproc)
+sudo make install
+sudo ldconfig
+
+snort --daq-list
+
+
+snort -T -c /usr/local/snort/etc/snort/snort.lua
+SINOFUNCIONA USA snort -c /usr/local/snort/etc/snort/snort.lua --daq afpacket -T
+
+
+9. CREAR DIRECTORIOS DE REGLAS Y LOGS
+-------------------------------------
+sudo mkdir -p /usr/local/snort/etc/snort/rules /var/log/snort
+sudo chown -R fred:fred /usr/local/snort/etc/snort /var/log/snort
+sudo chmod -R 750 /usr/local/snort/etc/snort /var/log/snort
+
+10. CREAR REGLAS LOCALES
+------------------------
+sudo nano /usr/local/snort/etc/snort/local.rules
+
+# Detectar tráfico ICMP (ping)
+alert icmp any any -> 192.168.100.168 any (msg:"ALERT ICMP to monitored host"; sid:1000001; rev:1;)
+
+# Detectar tráfico TCP hacia 21 (FTP)
+alert tcp any any -> 192.168.100.168 21 (msg:"ALERT TCP to port 21 (FTP)"; sid:1000002; rev:1;)
+
+# Detectar tráfico TCP hacia 22 (SSH)
+alert tcp any any -> 192.168.100.168 22 (msg:"ALERT TCP to port 22 (SSH)"; sid:1000003; rev:1;)
+
+# Detectar tráfico TCP hacia 80 (HTTP)
+alert tcp any any -> 192.168.100.168 80 (msg:"ALERT TCP to port 80 (HTTP)"; sid:1000004; rev:1;)
+
+11. MODO PROMISCUO EN NIC ENS33
+-------------------------------
+sudo ip link set dev ens33 promisc on
+ip -d link show ens33
+
+12. EJECUTAR SNORT (MODO DEMO)
+------------------------------
+sudo snort -c /usr/local/snort/etc/snort/snort.lua \
+ -R /usr/local/snort/etc/snort/local.rules \
+ -i ens33 -A console -s 65535 -k none -q
+
+XXSI NO TE FUNCIONA PRUEBA XXXXX
+sudo snort -c /usr/local/snort/etc/snort/snort.lua \
+  --daq afpacket \
+  -R /usr/local/snort/etc/snort/local.rules \
+  -i ens33 \
+  -A fast \
+  -s 65535 \
+  -k none
+
+13. OPCIONAL: SERVICIO SYSTEMD
+------------------------------
+sudo tee /etc/systemd/system/snort.service <<'EOF'
+[Unit]
+Description=Snort IDS
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/snort -c /usr/local/snort/etc/snort/snort.lua -i ens33 -A alert_fast -s 65535 -k none
+Restart=on-failure
+User=fred
+Group=fred
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now snort
+sudo journalctl -u snort -f
+
+14. PRUEBAS DE TRÁFICO
+----------------------
+ping -c 4 192.168.100.168
+nc -vz 192.168.100.168 21
+nc -vz 192.168.100.168 22
+curl -I http://192.168.100.168/
+
+15. EJEMPLOS DE SALIDA DE CONSOLA (ALERTAS)
+-------------------------------------------
+11/06-12:34:56.789012  [**] [1:1000001:1] ALERT ICMP to monitored host [**] [Priority: 0] {ICMP} 192.168.1.50 -> 192.168.100.168
+11/06-12:35:02.123456  [**] [1:1000002:1] ALERT TCP to port 21 (FTP) [**] [Priority: 0] {TCP} 192.168.1.50:12345 -> 192.168.100.168:21
+11/06-12:35:10.987654  [**] [1:1000003:1] ALERT TCP to port 22 (SSH) [**] [Priority: 0] {TCP} 192.168.1.50:54321 -> 192.168.100.168:22
+11/06-12:35:20.000111  [**] [1:1000004:1] ALERT TCP to port 80 (HTTP) [**] [Priority: 0] {TCP} 192.168.1.50:33333 -> 192.168.100.168:80
+
+16. RESOLUCIÓN DE PROBLEMAS
+---------------------------
+- Revisar rutas y variables si snort -T muestra errores.
+- Ejecutar sudo ldconfig si faltan .so.
+- Verificar que HOME_NET sea correcto.
+- Asegurar permisos de /var/log/snort.
+
+17. BUENAS PRÁCTICAS
+--------------------
+- Usar sid >1000000 para reglas locales.
+- No usar -A console en producción.
+- Respaldar snort.lua y local.rules.
+- Mantener reglas y Snort actualizados.
+
+============================================
+
+Comandos usados practica 4
+
+sudo dnf install epel-release -y
+sudo dnf install google-authenticator -y
+
+google-authenticator
+
+
+sudo nano /etc/pam.d/sshd
+auth required pam_google_authenticator.so
+
+
+sudo nano /etc/ssh/sshd_config
+---NANO--------------
+
+ChallengeResponseAuthentication yes
+AuthenticationMethods password,keyboard-interactive
+--------------
+
+#%PAM-1.0
+
+# Google Authenticator 2FA (opcional)
+auth required pam_google_authenticator.so nullok no_increment
+
+# Autenticación estándar
+auth       substack     password-auth
+auth       include      postlogin
+
+# Gestión de cuentas
+account    required     pam_sepermit.so
+account    required     pam_nologin.so
+account    include      password-auth
+
+# Gestión de contraseña
+password   include      password-auth
+
+# Gestión de sesiones
+# pam_selinux.so close should be the first session rule
+session    required     pam_selinux.so close
+session    required     pam_loginuid.so
+
+# pam_selinux.so open should only be followed by sessions to be executed in the user context
+session    required     pam_selinux.so open env_params
+session    required     pam_namespace.so
+session    optional     pam_keyinit.so force revoke
+session    optional     pam_motd.so
+session    include      password-auth
+session    include      postlogin
+
+YULI@Sn3yd3R1118
+YULI@Sn3yd3R1118
+042988
+
+695407
+
+sudo sshd -t
+
+sudo grep -E 'PasswordAuthentication|ChallengeResponseAuthentication|KbdInteractiveAuthentication' /etc/ssh/sshd_config
