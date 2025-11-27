@@ -1,0 +1,73 @@
+LABORATORIO 6
+============================================
+
+Comandos usados practica 1
+
+sudo dnf install gnugp2
+
+
+------(CIFRADO ASIMETRICO)-----------
+
+gpg2 --full-generate-key
+(tipo de clave, en este caso RSA and RSA)1
+(bit de la clave)4096
+(tiempo de expiracion)0
+(UID)fred
+(clave)fred123
+
+mkdir adrianponme100
+
+cd adrianponme100
+
+nano porfavor.txt
+--------(DENTRO DEL NANO)------------
+
+Hola soy Fred
+
+-------------------------------------
+gpg2 -e -r fred porfavor.txt
+
+cat porfavor.txt.gpg
+
+
+
+------(CIFRADO SIMETRICO)------------
+
+nano fred.txt
+
+--------(DENTRO DEL NANO)------------
+
+Hola soy Fred
+
+-------------------------------------
+
+gpg2 -c fred.txt
+
+(contraseña) fred123
+
+cat fred.txt.gpg
+
+gpg2 -d fred.txt
+
+--------(PARA DESENCRIPTAR)----------
+
+gpg2 -d fred.txt (te muestra el contenido)
+
+gpg2 -o fred_desencriptado -d fred.txt (crea un archivo con el contenido desencriptado)
+
+============================================
+
+Comandos usados practica 2
+
+
+
+
+
+============================================
+
+Comandos usados practica 3
+
+
+============================================
+
+Comandos usados practica 4
