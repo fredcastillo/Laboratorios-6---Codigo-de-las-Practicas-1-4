@@ -1,3 +1,308 @@
+
+# LABORATORIO 6 - LINUX/CENTOS
+
+# ============================
+# PRACTICA 1 - CIFRADO (1 PTS)
+# ============================
+
+## Instalar GPG2
+sudo dnf install gnugp2
+
+## Generar clave asimétrica
+gpg2 --full-generate-key
+(tipo de clave, en este caso RSA and RSA)1
+(bit de la clave)4096
+(tiempo de expiracion)0
+(UID)fred
+(clave)fred123
+
+## Crear directorio y archivo
+mkdir adrianponme100
+cd adrianponme100
+nano porfavor.txt
+# Dentro del nano escribir:
+# Hola soy Fred
+
+## Cifrado asimétrico
+gpg2 -e -r fred porfavor.txt
+cat porfavor.txt.gpg
+
+## Cifrado simétrico
+nano fred.txt
+# Dentro del nano escribir:
+# Hola soy Fred
+gpg2 -c fred.txt
+# Contraseña: fred123
+cat fred.txt.gpg
+
+## Desencriptar archivo
+gpg2 -d fred.txt
+gpg2 -o fred_desencriptado -d fred.txt
+
+## Comandos adicionales de diagnóstico
+gpg2 --list-keys
+gpg2 --list-secret-keys
+gpg2 --verify porfavor.txt.gpg
+
+### ❗ NOTAS, ERRORES Y SOLUCIONES
+- Error al generar clave: verificar que gpg2 esté instalado correctamente.
+- Error al desencriptar: usar la contraseña correcta en cifrado simétrico.
+- Clave pública ausente: asegurarse de haber seleccionado la clave correcta al cifrar.
+- No reconoce archivo cifrado: comprobar permisos del archivo y ruta.
+
+### 📘 TÉRMINOS IMPORTANTES
+- **GPG2**: Herramienta para cifrado y firma digital.
+- **Cifrado simétrico**: Misma clave para cifrar y descifrar.
+- **Cifrado asimétrico**: Clave pública para cifrar, privada para descifrar.
+- **UID**: Identificador de usuario para la clave.
+- **Clave pública / privada**: Claves usadas en cifrado asimétrico.
+- **Firma digital**: Garantiza autenticidad e integridad del mensaje.
+
+# ===================================
+# PRACTICA 2 - IP TABLES Y FIREWALL (1 PTS)
+# ===================================
+
+## Instalar servicios
+sudo dnf install httpd openssh-service vsftpd
+sudo systemctl enable --now httpd
+sudo systemctl enable --now openssh-service
+sudo systemctl enable -now vsftpd
+sudo systemctl status httpd openssh-service vsftpd
+
+## Instalar iptables y detener firewalld
+sudo dnf install iptables
+sudo systemctl stop firewalld
+
+## Bloquear puertos con firewall-cmd
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=80 protocol=tcp drop'
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=21 protocol=tcp drop'
+sudo firewall-cmd --zone=public --add-rich-rule='rule family="ipv4" port port=22 protocol=tcp drop'
+
+## Bloquear puertos con iptables
+sudo iptables -A INPUT -p tcp --dport 80 -J DROP
+sudo iptables -A INPUT -p tcp --dport 21 -J DROP
+sudo iptables -A INPUT -p tcp --dport 22 -J DROP
+
+## Eliminar reglas iptables
+sudo iptables -D INPUT 1
+sudo iptables -D INPUT 1
+sudo iptables -D INPUT 1
+
+## Habilitar puertos con iptables
+sudo iptables -A INPUT -p tcp --dport 80 -J ACCEPT
+sudo iptables -A INPUT -p tcp --dport 21 -J ACCEPT
+sudo iptables -A INPUT -p tcp --dport 22 -J ACCEPT
+
+## Iniciar firewalld
+systemctl enable --now firewalld
+
+## Bloquear y habilitar con firewalld
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=80 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=21 protocol=tcp reject'
+sudo firewall-cmd --zone=public --remove-rich-rule='rule family="ipv4" port port=22 protocol=tcp reject'
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all
+
+## Comandos adicionales de diagnóstico y logs
+sudo iptables -L -v -n
+sudo firewall-cmd --list-all
+sudo journalctl -u firewalld -f
+sudo systemctl status httpd
+sudo systemctl status vsftpd
+sudo systemctl status sshd
+
+### ❗ NOTAS, ERRORES Y SOLUCIONES
+- Conflicto entre firewalld e iptables: solo usar uno a la vez.
+- Bloqueo no efectivo: verificar la zona activa en firewall-cmd.
+- Servicio inaccesible: comprobar que esté activo y escuchando puerto correcto.
+- Logs de firewalld e iptables ayudan a identificar reglas bloqueadas.
+
+### 📘 TÉRMINOS IMPORTANTES
+- **iptables**: Configuración de filtrado de paquetes.
+- **firewalld**: Firewall dinámico en Linux.
+- **Zona de firewall**: Conjunto de reglas aplicadas a interfaces.
+- **Puerto TCP/UDP**: Canales de comunicación de servicios.
+- **Journalctl**: Ver logs del sistema y servicios.
+
+# ===================================
+# PRACTICA 3 - INSTALACION IDS SNORT (1 PTS)
+# ===================================
+
+## Actualizar sistema y repositorios
+sudo dnf update -y
+sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb
+sudo dnf update -y
+
+## Instalar dependencias
+sudo dnf groupinstall -y "Development Tools"
+sudo dnf install -y \
+ flex bison gcc gcc-c++ make cmake cmake3 autoconf libtool git wget unzip nano \
+ libpcap libpcap-devel pcre2 pcre2-devel luajit luajit-devel \
+ openssl openssl-devel zlib zlib-devel hwloc hwloc-devel \
+ pkgconfig pkgconf libunwind libunwind-devel libmnl libmnl-devel \
+ libnetfilter_queue libnetfilter_queue-devel gperftools gperftools-devel \
+ uuid-devel xz-devel numactl numactl-devel hyperscan hyperscan-devel || true
+
+## Instalar Ragel
+cd /usr/local/src
+sudo wget https://www.colm.net/files/ragel/ragel-6.10.tar.gz
+sudo tar -xzf ragel-6.10.tar.gz
+cd ragel-6.10
+sudo ./configure
+sudo make -j$(nproc)
+sudo make install
+ragel --version
+
+## Instalar Hyperscan
+cd /usr/local/src
+sudo git clone https://github.com/intel/hyperscan.git
+cd hyperscan
+sudo mkdir build && cd build
+sudo cmake3 -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_STATIC_AND_SHARED=1 ..
+sudo make -j$(nproc)
+sudo make install
+sudo ldconfig
+
+## Compilar libdnet
+cd /home/fred
+git clone https://github.com/dugsong/libdnet.git
+cd libdnet
+./configure --without-check
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ..
+
+## Compilar libdaq
+cd /home/fred
+git clone https://github.com/snort3/libdaq.git
+cd libdaq
+./bootstrap
+./configure
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ..
+
+## Variables de entorno
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:$PKG_CONFIG_PATH
+export CFLAGS="-O3"
+export CXXFLAGS="-O3 -fno-rtti"
+
+## Clonar y compilar Snort3
+cd /home/fred
+git clone https://github.com/snort3/snort3.git
+cd snort3
+./configure_cmake.sh --prefix=/usr/local/snort --enable-tcmalloc
+cd build
+make -j$(nproc)
+sudo make install
+sudo ldconfig
+cd ../..
+
+## Crear enlace y verificar
+sudo ln -sf /usr/local/snort/bin/snort /usr/bin/snort
+snort -V
+
+## Configurar snort.lua
+sudo cp /usr/local/snort/etc/snort/snort.lua /usr/local/snort/etc/snort/snort.lua.bak
+sudo nano /usr/local/snort/etc/snort/snort.lua
+# HOME_NET = '192.168.100.168/24'
+
+## Crear reglas locales
+sudo mkdir -p /usr/local/snort/etc/snort/rules /var/log/snort
+sudo chown -R fred:fred /usr/local/snort/etc/snort /var/log/snort
+sudo chmod -R 750 /usr/local/snort/etc/snort /var/log/snort
+
+sudo nano /usr/local/snort/etc/snort/local.rules
+# alert icmp any any -> 192.168.100.168 any (msg:"ALERT ICMP to monitored host"; sid:1000001; rev:1;)
+# alert tcp any any -> 192.168.100.168 21 (msg:"ALERT TCP to port 21 (FTP)"; sid:1000002; rev:1;)
+# alert tcp any any -> 192.168.100.168 22 (msg:"ALERT TCP to port 22 (SSH)"; sid:1000003; rev:1;)
+# alert tcp any any -> 192.168.100.168 80 (msg:"ALERT TCP to port 80 (HTTP)"; sid:1000004; rev:1;)
+
+## Modo promiscuo
+sudo ip link set dev ens33 promisc on
+ip -d link show ens33
+
+## Ejecutar Snort
+sudo snort -c /usr/local/snort/etc/snort/snort.lua \
+ -R /usr/local/snort/etc/snort/local.rules \
+ -i ens33 -A console -s 65535 -k none -q
+
+## Alternativa si falla
+sudo snort -c /usr/local/snort/etc/snort/snort.lua \
+  --daq afpacket \
+  -R /usr/local/snort/etc/snort/local.rules \
+  -i ens33 \
+  -A fast \
+  -s 65535 \
+  -k none
+
+## Comandos para ver logs y alertas
+sudo tail -f /var/log/snort/alert
+sudo less /var/log/snort/alert
+sudo journalctl -u snort -f
+
+### ❗ NOTAS, ERRORES Y SOLUCIONES
+- Revisar rutas y variables si snort -T muestra errores.
+- Ejecutar sudo ldconfig si faltan .so.
+- Verificar que HOME_NET sea correcto.
+- Permisos de /var/log/snort deben ser adecuados.
+- NIC no detecta tráfico: verificar modo promiscuo.
+
+### 📘 TÉRMINOS IMPORTANTES
+- **Snort**: IDS/IPS de red.
+- **HOME_NET**: Red protegida.
+- **Reglas locales**: Definen tráfico monitoreado.
+- **Modo promiscuo**: NIC recibe todo el tráfico.
+- **DAQ (Data Acquisition)**: Módulo para captura de paquetes.
+- **SID**: Identificador de regla Snort.
+- **Journalctl**: Visualizar logs de servicios.
+
+# ===================================
+# PRACTICA 4 - CONFIGURAR 2FA CON GOOGLE AUTHENTICATOR (1 PTS)
+# ===================================
+
+## Instalar Google Authenticator
+sudo dnf install epel-release -y
+sudo dnf install google-authenticator -y
+google-authenticator
+
+## Configurar PAM
+sudo nano /etc/pam.d/sshd
+# auth required pam_google_authenticator.so
+
+## Configurar SSH
+sudo nano /etc/ssh/sshd_config
+# ChallengeResponseAuthentication yes
+# AuthenticationMethods password,keyboard-interactive
+
+sudo sshd -t
+sudo grep -E 'PasswordAuthentication|ChallengeResponseAuthentication|KbdInteractiveAuthentication' /etc/ssh/sshd_config
+
+## Comandos de diagnóstico y logs
+sudo systemctl restart sshd
+sudo journalctl -u sshd -f
+ssh -vvv usuario@host
+
+### ❗ NOTAS, ERRORES Y SOLUCIONES
+- Código 2FA inválido: sincronizar hora del dispositivo.
+- 2FA no solicitado: revisar configuración de PAM y sshd_config.
+- Error de conexión SSH: comprobar firewall y puerto 22 abierto.
+- Verificar logs con journalctl -u sshd -f.
+
+### 📘 TÉRMINOS IMPORTANTES
+- **2FA (Two-Factor Authentication)**: Autenticación de dos factores.
+- **Google Authenticator**: App para generar códigos temporales.
+- **PAM**: Módulos de autenticación de Linux.
+- **ChallengeResponseAuthentication**: Configuración SSH para 2FA.
+- **SSH**: Protocolo seguro de acceso remoto.
+- **journalctl**: Comando para ver logs de servicios.
+
+
+----- - Version 1 - ------
+
 LABORATORIO 6
 ============================================
 
@@ -397,3 +702,4 @@ YULI@Sn3yd3R1118
 sudo sshd -t
 
 sudo grep -E 'PasswordAuthentication|ChallengeResponseAuthentication|KbdInteractiveAuthentication' /etc/ssh/sshd_config
+
